@@ -31,6 +31,9 @@ $ cd cp210x-program-1.0
 
 $ sudo ./cp210x-program -f eeprom.hex
 
+If you want - you can do a backup of the Original content.
+
+
 set the Baudrate in the 2102s eeprom Baudrate-Table (@1200Baud position) to 960
 
 $ sudo ./cp210x-program -p -F eeprom.hex -w --set-baudrate 1200:9E58,FE0C,1
@@ -43,10 +46,20 @@ Doublecheck the effect of the settings:
 
 $ sudo ./cp210x-program
 
+Reboot the System in order to make the changes known for the Kernel 
+
 Check the USB-Device connection via lsusb:
 
 $ lsusb
 
 Check the USB Device ID at /dev/serial/by-id
 
+
+
 # Update add 67_Aquarea.pm
+
+let FHEM Download the 67_Aquarea.pm modul and add this github Account to your update library.
+
+update add https://raw.githubusercontent.com/der-lolo/aquarea/master/controls_aquarea.txt
+
+

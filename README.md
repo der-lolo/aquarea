@@ -62,11 +62,13 @@ let FHEM Download the 67_Aquarea.pm modul and add this github Account to your up
 
 *update add https://raw.githubusercontent.com/der-lolo/aquarea/master/controls_aquarea.txt
 
-wait until FHEM says that "shutdown restart is required!
+*update
+
+wait until FHEM says that "a shutdown restart is required!"
 
 *shutdown restart 
 
-*define Aquarea Aquarea serial /dev/serial/by-id/GeishaCom@1200,8,E,1 
+*define Aquarea Aquarea serial /dev/serial/by-id/fullnameOFadapterGeishaCom@1200,8,E,1 
 
 
 

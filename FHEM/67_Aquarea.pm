@@ -43,7 +43,7 @@ sub Aquarea_Set($$@)
 
 
     my $usage =	"Sollwertverschiebung:slider,-5,1,5 ".
-								"Modus:heizen,kuehlen,Tank,Stby,Auto ".
+								"Modus:heizen,kuehlen,Tank,Stby,Auto,heizen und Tank,kuehlen und Tank,aus ".
 								"Tank:slider,40,1,65 ".
 								"Error:reset ".
 								"Sync ";
@@ -65,11 +65,14 @@ sub Aquarea_Set($$@)
     {
 
 			Log3 $name, 3, "Aquarea: Set Modus $value";
-      if ($value eq "heizen")	  {$value=3;}
-      if ($value eq "kuehlen")	{$value=5;}
-      if ($value eq "Tank")	    {$value=17;}
-      if ($value eq "Stby")	    {$value=1;}
-      if ($value eq "Auto")	    {$value=33;}
+      if ($value eq "Stby")	                {$value=1;}
+      if ($value eq "aus")	                {$value=2;}
+      if ($value eq "heizen")	              {$value=3;}
+      if ($value eq "kuehlen")            	{$value=5;}
+      if ($value eq "Tank")	                {$value=17;}
+      if ($value eq "heizen und Tank")	    {$value=19;}
+      if ($value eq "kuehlen und Tank")	    {$value=21;}
+      if ($value eq "Auto")	                {$value=33;}
 			$hash->{w_value}=$value;
 			$hash->{w_register}=144;
 			$hash->{w_write}=1;

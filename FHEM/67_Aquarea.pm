@@ -70,8 +70,8 @@ sub Aquarea_Set($$@)
       if ($value eq "heizen")	              {$value=3;}
       if ($value eq "kuehlen")            	{$value=5;}
       if ($value eq "Tank")	                {$value=17;}
-      if ($value eq "heizen und Tank")	    {$value=19;}
-      if ($value eq "kuehlen und Tank")	    {$value=21;}
+      if ($value eq "heizenUNDTank")	      {$value=19;}
+      if ($value eq "kuehlenUNDTank") 	    {$value=21;}
       if ($value eq "Auto")	                {$value=33;}
 			$hash->{w_value}=$value;
 			$hash->{w_register}=144;

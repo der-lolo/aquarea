@@ -355,17 +355,18 @@ Aquarea_Read($)
 			if ($dec[1]==27)	# 		Bit 0 ein/stby ???? Bit 1	gesetzt=heizen  Bit 2		Bit 3  Bit 4	gesetzt=Speicher(Puffer)  Bit 5  Bit 6	gesetzt=Quiet	Bit 7
 			{
       	Aq_readingsSingleUpdate($hash,"27-Modus",$ergebnis, 1);
-    	}
-			if ($dec[1]==27)	# 		Bit 0 ein/stby ???? Bit 1	gesetzt=heizen  Bit 2		Bit 3  Bit 4	gesetzt=Speicher(Puffer)  Bit 5  Bit 6	gesetzt=Quiet	Bit 7
-			{
-				$ergebnis="stby";
-				if ($dec[6] & 1) {$ergebnis=" ein";}
-				if ($dec[6] & 2) {$ergebnis=$ergebnis." Heizung";}
-				if ($dec[6] & 4) {$ergebnis=$ergebnis." Kuehlung";}
+ 				$ergebnis="stby";
+				if ($dec[6] & 1) {$ergebnis="ein";}
+				else {$ergebnis="aus";}
+				if ($dec[6] & 2) {$ergebnis=$ergebnis." heizen";}
+				if ($dec[6] & 4) {$ergebnis=$ergebnis." kuehlen";}
 				if ($dec[6] & 16) {$ergebnis=$ergebnis." Speicher";}
-        if ($dec[6] & 32) {$ergebnis=$ergebnis." Auto";}
+			        if ($dec[6] & 32) {$ergebnis=$ergebnis." Auto";}
 				if ($dec[6] & 64) {$ergebnis=$ergebnis." Quiet";}
       	Aq_readingsSingleUpdate($hash,"27-Modustext",$ergebnis, 1);
+				if ($dec[6] & 1) {$ergebnis="ein";}
+				else {$ergebnis="aus";}
+      	Aq_readingsSingleUpdate($hash,"27-Power",$ergebnis, 1);
     	}
 			if ($dec[1]==28)	# ???
 			{
@@ -380,7 +381,11 @@ Aquarea_Read($)
 			{
       	# readingsSingleUpdate($hash,"30",$dec[6], 1);
       	Aq_readingsSingleUpdate($hash,"30-29-Energie_heizen_in_W",(($dec[6]*256)+$hash->{helper}{29}), 1);
-    	}
+			if ((($dec[6]*256)+$hash->{helper}{29}) > 0)
+			{
+			Aq_readingsSingleUpdate($hash,"27-Modusaktiv","heizen", 1);
+			}
+	}
 			if ($dec[1]==31)	# ??? lowByte Energie k�hlen ???
 			{
       	# Aq_readingsSingleUpdate($hash,"31",$ergebnis, 1);
@@ -390,6 +395,10 @@ Aquarea_Read($)
 			{
       	# Aq_readingsSingleUpdate($hash,"32",$ergebnis, 1);
       	Aq_readingsSingleUpdate($hash,"32-31-Energie_kuehlen_in_W",(($dec[6]*256)+$hash->{helper}{31}), 1);
+			if ((($dec[6]*256)+$hash->{helper}{31}) > 0)
+			{
+			Aq_readingsSingleUpdate($hash,"27-Modusaktiv","kuehlen", 1);
+			}
     	}
 			if ($dec[1]==33)	# lowByte Puffer heizen
 			{
@@ -399,6 +408,10 @@ Aquarea_Read($)
 			if ($dec[1]==34)	# highByte Puffer heizen
 			{
       	Aq_readingsSingleUpdate($hash,"34-33-Energie_Speicher_in_W",(($dec[6]*256)+$hash->{helper}{33}), 1);
+			if ((($dec[6]*256)+$hash->{helper}{33}) > 0)
+			{
+			Aq_readingsSingleUpdate($hash,"27-Modusaktiv","Speicher", 1);
+			}
     	}
 			if ($dec[1]==35)	# Pumpenstufe Pumpe Geschwindigkeitsstufe dez 16=Stufe 1, dez 64=Stufe 4
 			{

@@ -74,4 +74,4 @@ shutdown restart
 ```
 ```
 define Aquarea Aquarea serial /dev/serial/by-id/fullnameOFadapterGeishaCom@1200,8,E,1
-``
+```

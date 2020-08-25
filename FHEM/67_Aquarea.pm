@@ -8,17 +8,22 @@
 
 package main;
 
-
-
 use strict;
 use warnings;
 use Time::HiRes qw(gettimeofday);
 
-
 sub Aquarea_Read($);
 sub Aquarea_Ready($);
 
-
+my $state;
+my $aktueller_fehler;
+my $modus_text;
+my $modus;
+my $temp_r;
+my $temp_v;
+my $temp_a;
+my $temp_s;
+my $state_temp;
 
 sub
 Aquarea_Initialize($)
@@ -40,13 +45,13 @@ sub Aquarea_Set($$@)
 {
     my ($hash, $name, $cmd,$value) = @_;
 
-
-
     my $usage =	"Sollwertverschiebung:slider,-5,1,5 ".
-								"Modus:heizen,kuehlen,Tank,Stby,Auto,heizenUNDTank,kuehlenUNDTank,aus ".
-								"Tank:slider,40,1,65 ".
-								"Error:reset ".
-								"Sync ";
+		"Modus:heizen,kuehlen,Speicher,Stby,Auto,heizenUNDSpeicher,kuehlenUNDSpeicher,aus ".
+		"Speicher:slider,40,1,65 ".
+		"Error:reset ".
+		"Sync ".
+		"ein ".
+		"aus ";
 
     if($cmd eq "Sollwertverschiebung")
     {
@@ -66,26 +71,55 @@ sub Aquarea_Set($$@)
 
 			Log3 $name, 3, "Aquarea: Set Modus $value";
       if ($value eq "Stby")	                {$value=1;}
-      if ($value eq "aus")	                {$value=2;}
-      if ($value eq "heizen")	              {$value=3;}
+      if ($value eq "heizen")	              	{$value=3;}
       if ($value eq "kuehlen")            	{$value=5;}
-      if ($value eq "Tank")	                {$value=17;}
-      if ($value eq "heizenUNDTank")	      {$value=19;}
-      if ($value eq "kuehlenUNDTank") 	    {$value=21;}
+      if ($value eq "Speicher")	                {$value=17;}
+      if ($value eq "heizenUNDSpeicher")      	{$value=19;}
+      if ($value eq "kuehlenUNDSpeicher")   	{$value=21;}
       if ($value eq "Auto")	                {$value=33;}
 			$hash->{w_value}=$value;
 			$hash->{w_register}=144;
 			$hash->{w_write}=1;
 			return (undef,1);
     }
-    elsif($cmd eq "Tank")
+    elsif($cmd eq "Speicher")
     {
 
- 			Log3 $name, 3, "Aquarea: Set Tank $value $name";
+ 			Log3 $name, 3, "Aquarea: Set Speicher $value $name";
 			$hash->{w_value}=$value;
 			$hash->{w_register}=137;
 			$hash->{w_write}=1;
 			return (undef,1);
+    }
+    elsif($cmd eq "ein")
+    {
+			if ($modus & 1) {
+			# ist breits auf ein
+			} else {
+			$value=$modus+1;
+			Log3 $name, 3, "Aquarea: Set Modus $value";
+			$hash->{w_value}=$value;
+			$hash->{w_register}=144;
+			$hash->{w_write}=1;
+			return (undef,1);
+			}
+    }
+    elsif($cmd eq "aus")
+    {
+			if ($modus & 1) {
+				if ($modus==1) {
+					$value=2;
+				} else {
+					$value=$modus-1;
+				}
+			Log3 $name, 3, "Aquarea: Set Modus $value";
+			$hash->{w_value}=$value;
+			$hash->{w_register}=144;
+			$hash->{w_write}=1;
+			return (undef,1);
+			} else {
+			# ist breits auf aus
+			}
     }
     elsif($cmd eq "Error")
     {
@@ -288,89 +322,97 @@ Aquarea_Read($)
 
 			if (($dec[1] => 0) && ($dec[1] < 16))
 			{
-  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
 			}
 
 			if ($dec[1]==16)	# ???
 			{
-
-				Aq_readingsSingleUpdate($hash,"16",$ergebnis, 1);
-      	# readingsSingleUpdate($hash,"16",$ergebnis, 1);
+#				Aq_readingsSingleUpdate($hash,"16",$ergebnis, 1);
     	}
 			if ($dec[1]==17)	# beim abtauen=64
 			{
-      	Aq_readingsSingleUpdate($hash,"17",$ergebnis, 1);
+#      	Aq_readingsSingleUpdate($hash,"17",$ergebnis, 1);
 				if ($dec[6] & 64)
 				{
 					$ergebnis="1";
-					Aq_readingsSingleUpdate($hash,"17-abtauen",$ergebnis, 1);
+					Aq_readingsSingleUpdate($hash,"abtauen aktiv",$ergebnis, 1);
 				}
 				else
 				{
 					$ergebnis="0";
-					Aq_readingsSingleUpdate($hash,"17-abtauen",$ergebnis, 1);
+					Aq_readingsSingleUpdate($hash,"abtauen aktiv",$ergebnis, 1);
 				}
     	}
 			if ($dec[1]==18)	# Aussentemperatur
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"018-Aussentemperatur",$ergebnis, 1);
+	$temp_a=$ergebnis;
+      	Aq_readingsSingleUpdate($hash,"Temperatur aussen",$ergebnis, 1);
     	}
 			if ($dec[1]==19)	# Vorlauftemperatur
 			{
-      	Aq_readingsSingleUpdate($hash,"019-Vorlauftemperatur",$ergebnis, 1);
+	$temp_v=$ergebnis;
+      	Aq_readingsSingleUpdate($hash,"Temperatur Vorlauf",$ergebnis, 1);
     	}
 			if ($dec[1]==20)	# aktueller Fehler, geht wieder auf 0 wenn fehler behoben dez 38=Fehler H72(Speichertemperaturf�hler)
 			{
-				if ($dec[6] == 38) {$ergebnis="H72(Speichertemperaturf�hler)";}
-				if ($dec[6] == 156) {$ergebnis="H76(Kommunikationsfehler der Fernbedienung)";}
-      	Aq_readingsSingleUpdate($hash,"020-aktueller_Fehler",$ergebnis, 1);
+				if ($dec[6] == 0) {$aktueller_fehler="";}
+				if ($dec[6] == 38) {$aktueller_fehler="H72(Speichertemperaturf�hler)";}
+				if ($dec[6] == 156) {$aktueller_fehler="H76(Kommunikationsfehler der Fernbedienung)";}
+      	Aq_readingsSingleUpdate($hash,"aktueller Fehler",$aktueller_fehler, 1);
     	}
 			if ($dec[1]==21)	# R�cklauftemperatur
 			{
-      	Aq_readingsSingleUpdate($hash,"021-Ruecklauftemperatur",$ergebnis, 1);
+	$temp_r=$ergebnis;
+      	Aq_readingsSingleUpdate($hash,"Temperatur Ruecklauf",$ergebnis, 1);
     	}
 			if ($dec[1]==22)	# Speichertemperatur
 			{
-      	Aq_readingsSingleUpdate($hash,"022-Speichertemperatur",$ergebnis, 1);
+	$temp_s=$ergebnis;
+      	Aq_readingsSingleUpdate($hash,"Temperatur Speicher",$ergebnis, 1);
     	}
 			if ($dec[1]==23)	# Kompressorfrequenz
 			{
-      	Aq_readingsSingleUpdate($hash,"023-Kompressorfrequenz",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Kompressorfrequenz",$ergebnis, 1);
     	}
 			if ($dec[1]==24)	# aktueller Fehler, geht wieder auf 0 wenn fehler behoben dez 38=Fehler H72(Speichertemperaturf�hler)
 			{
 				if ($dec[6] == 38) {$ergebnis="H72(Speichertemperaturf�hler)";}
 				if ($dec[6] == 156) {$ergebnis="H76(Kommunikationsfehler der Fernbedienung)";}
-      	Aq_readingsSingleUpdate($hash,"024-letzter_Fehler",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"letzter Fehler",$ergebnis, 1);
     	}
 			if ($dec[1]==25)	# ???
 			{
-      	Aq_readingsSingleUpdate($hash,"25",$ergebnis, 1);
+#      	Aq_readingsSingleUpdate($hash,"25",$ergebnis, 1);
     	}
 			if ($dec[1]==26)	# ???
 			{
-      	Aq_readingsSingleUpdate($hash,"26",$ergebnis, 1);
+#      	Aq_readingsSingleUpdate($hash,"26",$ergebnis, 1);
     	}
 			if ($dec[1]==27)	# 		Bit 0 ein/stby ???? Bit 1	gesetzt=heizen  Bit 2		Bit 3  Bit 4	gesetzt=Speicher(Puffer)  Bit 5  Bit 6	gesetzt=Quiet	Bit 7
 			{
-      	Aq_readingsSingleUpdate($hash,"27-Modus",$ergebnis, 1);
- 				$ergebnis="stby";
+	$modus=$ergebnis;
+      	Aq_readingsSingleUpdate($hash,"Modus",$ergebnis, 1);
+				if ($dec[6] & 1) {$modus_text="ein |";
+					if ($dec[6] & 2) {$modus_text=$modus_text." heizen";Aq_readingsSingleUpdate($hash,"Modus heizen aktiv","1", 1);}
+					else {Aq_readingsSingleUpdate($hash,"Modus heizen aktiv","0", 1);}
+					if ($dec[6] & 4) {$modus_text=$modus_text." kuehlen";Aq_readingsSingleUpdate($hash,"Modus kuehlen aktiv","1", 1);}
+					else {Aq_readingsSingleUpdate($hash,"Modus kuehlen aktiv","0", 1);}
+					if ($dec[6] & 16) {$modus_text=$modus_text." Speicher";Aq_readingsSingleUpdate($hash,"Modus Speicher aktiv","1", 1);}
+					else {Aq_readingsSingleUpdate($hash,"Modus Speicher aktiv","0", 1);}
+					if ($dec[6] & 32) {$modus_text=$modus_text." Auto";}
+					if ($dec[6] & 64) {$modus_text=$modus_text." Quiet";}
+				}
+				else {$modus_text="aus";Aq_readingsSingleUpdate($hash,"Modus Speicher aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus heizen aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus kuehlen aktiv","0", 1);}
+				if ($dec[6] == 1) {$modus_text="stby";Aq_readingsSingleUpdate($hash,"Modus Speicher aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus heizen aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus kuehlen aktiv","0", 1);}
+      	Aq_readingsSingleUpdate($hash,"Modus Klartext",$modus_text, 1);
 				if ($dec[6] & 1) {$ergebnis="ein";}
 				else {$ergebnis="aus";}
-				if ($dec[6] & 2) {$ergebnis=$ergebnis." heizen";}
-				if ($dec[6] & 4) {$ergebnis=$ergebnis." kuehlen";}
-				if ($dec[6] & 16) {$ergebnis=$ergebnis." Speicher";}
-			        if ($dec[6] & 32) {$ergebnis=$ergebnis." Auto";}
-				if ($dec[6] & 64) {$ergebnis=$ergebnis." Quiet";}
-      	Aq_readingsSingleUpdate($hash,"27-Modustext",$ergebnis, 1);
-				if ($dec[6] & 1) {$ergebnis="ein";}
-				else {$ergebnis="aus";}
-      	Aq_readingsSingleUpdate($hash,"27-Power",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Betriebszustand",$ergebnis, 1);
     	}
 			if ($dec[1]==28)	# ???
 			{
-      	Aq_readingsSingleUpdate($hash,"28",$ergebnis, 1);
+#      	Aq_readingsSingleUpdate($hash,"28",$ergebnis, 1);
     	}
 			if ($dec[1]==29)	# lowByte Energie heizen
 			{
@@ -380,10 +422,10 @@ Aquarea_Read($)
 			if ($dec[1]==30)	# highByte Energie heizen
 			{
       	# readingsSingleUpdate($hash,"30",$dec[6], 1);
-      	Aq_readingsSingleUpdate($hash,"30-29-Energie_heizen_in_W",(($dec[6]*256)+$hash->{helper}{29}), 1);
+      	Aq_readingsSingleUpdate($hash,"Energie heizen in W",(($dec[6]*256)+$hash->{helper}{29}), 1);
 			if ((($dec[6]*256)+$hash->{helper}{29}) > 0)
 			{
-			Aq_readingsSingleUpdate($hash,"27-Modusaktiv","heizen", 1);
+			Aq_readingsSingleUpdate($hash,"Ventilstellung","heizen", 1);
 			}
 	}
 			if ($dec[1]==31)	# ??? lowByte Energie k�hlen ???
@@ -394,10 +436,10 @@ Aquarea_Read($)
 			if ($dec[1]==32)	# ??? highByte Energie k�hlen ???
 			{
       	# Aq_readingsSingleUpdate($hash,"32",$ergebnis, 1);
-      	Aq_readingsSingleUpdate($hash,"32-31-Energie_kuehlen_in_W",(($dec[6]*256)+$hash->{helper}{31}), 1);
+      	Aq_readingsSingleUpdate($hash,"Energie kuehlen in W",(($dec[6]*256)+$hash->{helper}{31}), 1);
 			if ((($dec[6]*256)+$hash->{helper}{31}) > 0)
 			{
-			Aq_readingsSingleUpdate($hash,"27-Modusaktiv","kuehlen", 1);
+			Aq_readingsSingleUpdate($hash,"Ventilstellung","kuehlen", 1);
 			}
     	}
 			if ($dec[1]==33)	# lowByte Puffer heizen
@@ -407,184 +449,191 @@ Aquarea_Read($)
     	}
 			if ($dec[1]==34)	# highByte Puffer heizen
 			{
-      	Aq_readingsSingleUpdate($hash,"34-33-Energie_Speicher_in_W",(($dec[6]*256)+$hash->{helper}{33}), 1);
+      	Aq_readingsSingleUpdate($hash,"Energie Speicher in W",(($dec[6]*256)+$hash->{helper}{33}), 1);
 			if ((($dec[6]*256)+$hash->{helper}{33}) > 0)
 			{
-			Aq_readingsSingleUpdate($hash,"27-Modusaktiv","Speicher", 1);
+			Aq_readingsSingleUpdate($hash,"Ventilstellung","Speicher", 1);
 			}
     	}
 			if ($dec[1]==35)	# Pumpenstufe Pumpe Geschwindigkeitsstufe dez 16=Stufe 1, dez 64=Stufe 4
 			{
 				$ergebnis=$ergebnis*0.0625;
-      	Aq_readingsSingleUpdate($hash,"35-Pumpengeschwindigkeitsstufe",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Pumpengeschwindigkeitsstufe",$ergebnis, 1);
     	}
 			if ($dec[1]==36)	# ???
 			{
-      	Aq_readingsSingleUpdate($hash,"36",$ergebnis, 1);
+#      	Aq_readingsSingleUpdate($hash,"36",$ergebnis, 1);
     	}
 
 			if (($dec[1] > 36) && ($dec[1] < 129))
 			{
-  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
 			}
 			if ($dec[1]==129)	# Reset Error (Taste an der Fernbedienung wurde gedr�ckt)
 			{
-      	Aq_readingsSingleUpdate($hash,"129-Reset_Error",$ergebnis, 1);
+#      	Aq_readingsSingleUpdate($hash,"Reset Error Taste gedr�ckt",$ergebnis, 1);
     	}
 			if ($dec[1]==130)	# Einstellen der niedrigen Au�entemperatur  -15 bis +15
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"130-Heat_On_Out_Lo",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Heat_On_Out_Lo",$ergebnis, 1);
     	}
 			if ($dec[1]==131)	# Einstellen der hohen Au�entemperatur  -15 bis +15
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"131-Heat_On_Out_Hi",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Heat_On_Out_Hi",$ergebnis, 1);
     	}
 			if ($dec[1]==132)	# Einstellen der Wasseraustrittstemperatur bei niedriger Au�entemperatur   25 bis 55
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"132-Heat_On_H20_Lo",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Heat_On_H20_Lo",$ergebnis, 1);
     	}
 			if ($dec[1]==133)	# Einstellen der Wasseraustrittstemperatur bei hoher Au�entemperatur      25 bis 55
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"133-Heat_On_H20_Hi",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Heat_On_H20_Hi",$ergebnis, 1);
     	}
 			if ($dec[1]==134)	# Einstellen der Au�entemperatur, bei der der Heizbetrieb in der Heizbetriebsart abgeschaltet wird   5 bis 35
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"134-Heat_Off_Set",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Heat_Off_Set",$ergebnis, 1);
     	}
 			if ($dec[1]==135)	# Einsteller der Au�entemperatur, bei der die Elektrozusatzheizung eingeschaltet wird
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"135-Heater_On_Out_Set",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Heater_On_Out_Set",$ergebnis, 1);
     	}
 			if ($dec[1]==136)	# ???  Cool Set ???
 			{
   			# Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
-				Aq_readingsSingleUpdate($hash,"136-Cool_Set",$ergebnis, 1);
+				Aq_readingsSingleUpdate($hash,"Kuehlung Solltemperatur",$ergebnis, 1);
     	}
 			if ($dec[1]==137)	# Hei�wasserspeichertemperatur  40 bis 75
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"137-Tank_Set",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Speicher Solltemperatur",$ergebnis, 1);
     	}
 			if ($dec[1]==138)	# Sollwertverschiebung -5 bis +5
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"138-Sollwertverschiebung",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Sollwertverschiebung",$ergebnis, 1);
     	}
 
 			if ($dec[1]==141)	#
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==142)	#
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#     	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==143)	#
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#    	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==144)	#
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==145)	#
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==146)	#
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==147)	#
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 
 
 
 			if ($dec[1]==177)	#
 			{
-      	Aq_readingsSingleUpdate($hash,"177-Cool_enable",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Kuehlen aktiviert",$ergebnis, 1);
     	}
 
 
 			if ($dec[1]==192)	#
 			{
 
-				if ($dec[6] & 1) {Aq_readingsSingleUpdate($hash,"192-ext_Raumthermostat","ja", 1);} else {Aq_readingsSingleUpdate($hash,"192-ext_Raumthermostat","nein", 1);}
-				if ($dec[6] & 2) {Aq_readingsSingleUpdate($hash,"192-Tank_vorhanden","ja", 1);} else {Aq_readingsSingleUpdate($hash,"192-Tank_vorhanden","nein", 1);}
-				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"192-Solar_Vorrang","ja", 1);} else {Aq_readingsSingleUpdate($hash,"192-Solar_Vorrang","nein", 1);}
-				if ($dec[6] & 16) {Aq_readingsSingleUpdate($hash,"192-Entkeimung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"192-Entkeimung","nein", 1);}
-				if ($dec[6] & 32) {Aq_readingsSingleUpdate($hash,"192-Zusatzheizung","B", 1);} else {Aq_readingsSingleUpdate($hash,"192-Zusatzheizung","A", 1);}
+				if ($dec[6] & 1) {Aq_readingsSingleUpdate($hash,"externes Raumthermostat","ja", 1);} else {Aq_readingsSingleUpdate($hash,"externes Raumthermostat","nein", 1);}
+				if ($dec[6] & 2) {Aq_readingsSingleUpdate($hash,"Speicher vorhanden","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Speicher vorhanden","nein", 1);}
+				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"Solar Vorrang","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Solar Vorrang","nein", 1);}
+				if ($dec[6] & 16) {Aq_readingsSingleUpdate($hash,"Entkeimung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Entkeimung","nein", 1);}
+				if ($dec[6] & 32) {Aq_readingsSingleUpdate($hash,"Zusatzheizung","B", 1);} else {Aq_readingsSingleUpdate($hash,"Zusatzheizung","A", 1);}
 				# if ($dec[6] & 64) {$ergebnis=$ergebnis." Quiet";}
-				if ($dec[6] & 128) {Aq_readingsSingleUpdate($hash,"192-Wasserschutzfunktion","ja", 1);} else {Aq_readingsSingleUpdate($hash,"192-Wasserschutzfunktion","nein", 1);}
+				if ($dec[6] & 128) {Aq_readingsSingleUpdate($hash,"Wasserschutzfunktion","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Wasserschutzfunktion","nein", 1);}
       	# Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==193)	# Aufheizdauer Cool/Heat $dec[6] ist die Zeit in 30 min Schritten  2=60min, 1=30 min, 20=10h
 			{
 				$ergebnis=$ergebnis*30;
-      	Aq_readingsSingleUpdate($hash,"193-Aufheizdauer_Cool-Heat",$ergebnis." min", 1);
+      	Aq_readingsSingleUpdate($hash,"Aufheizdauer kuehlen+heizen",$ergebnis." min", 1);
     	}
-			if ($dec[1]==194)	# 194-Aufheizdauer_WW_Tank_int 5=5min, 30=30min, 95=95min
+			if ($dec[1]==194)	# 194-Aufheizdauer_WW_Speicher_int 5=5min, 30=30min, 95=95min
 			{
 				$ergebnis=$ergebnis;
-      	Aq_readingsSingleUpdate($hash,"194-Aufheizdauer_WW_Tank_int",$ergebnis." min", 1);
+      	Aq_readingsSingleUpdate($hash,"Aufheizdauer Speicher int",$ergebnis." min", 1);
     	}
 			if ($dec[1]==195)	# Sollwertverschiebung -5 bis +5
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==196)	# 196-Entkeimungstemperatur
 			{
-      	Aq_readingsSingleUpdate($hash,"196-Entkeimungstemperatur",$dec[6], 1);
+      	Aq_readingsSingleUpdate($hash,"Entkeimungstemperatur",$dec[6], 1);
 				# Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==197)	# 197-Entkeimungsdauer"
 			{
-				Aq_readingsSingleUpdate($hash,"197-Entkeimungsdauer",$dec[6]." min", 1);
+				Aq_readingsSingleUpdate($hash,"Entkeimungsdauer",$dec[6]." min", 1);
       	# Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==198)	# Sollwertverschiebung -5 bis +5
 			{
-				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"198-Booster_Fun","ja", 1);} else {Aq_readingsSingleUpdate($hash,"198-Booster_Fun","nein", 1);}
-				if ($dec[6] & 8) {Aq_readingsSingleUpdate($hash,"198-Zusatzgehaeseheizung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"198-Zusatzgehaeseheizung","nein", 1);}
+				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"Booster Funktion","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Booster Funktion","nein", 1);}
+				if ($dec[6] & 8) {Aq_readingsSingleUpdate($hash,"Zusatzgehaeseheizung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Zusatzgehaeseheizung","nein", 1);}
 
        #	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==199)	# Sollwertverschiebung -5 bis +5
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 			if ($dec[1]==200)	# Sollwertverschiebung -5 bis +5
 			{
-      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#      	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}
 
 
 			if (($dec[1] > 138) && ($dec[1] < 141))
 			{
-  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
 			}
 			if (($dec[1] > 147) && ($dec[1] < 177))
 			{
-  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
 			}
 			if (($dec[1] > 177) && ($dec[1] < 192))
 			{
-  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
 			}
 			if (($dec[1] > 200) && ($dec[1] <= 255))
 			{
-  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
+#  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
 			}
 
 		}
+
+	if ($aktueller_fehler=="") {
+		$state = $modus_text." | V:".$temp_v." | R:".$temp_r." | S:".$temp_s." | A:".$temp_a;
+	} else {
+		$state = $aktueller_fehler;
+	}
+	Aq_readingsSingleUpdate($hash,"state",$state, 1);
 
   $hash->{PARTIAL} = $Aquareadata;
 

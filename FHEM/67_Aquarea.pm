@@ -45,9 +45,10 @@ sub Aquarea_Set($$@)
 {
     my ($hash, $name, $cmd,$value) = @_;
 
-    my $usage =	"Sollwertverschiebung ".
-		"Modus:heizen,kuehlen,Speicher,Stby,Auto,heizenUNDSpeicher,kuehlenUNDSpeicher,aus ".
-		"Speicher:slider,40,1,65 ".
+    my $usage =	"Sollwertverschiebung:slider,-5,1,5 ".
+		"Modus:heizen,kuehlen,Speicher,Stby,Auto,heizenUNDSpeicher,kuehlenUNDSpeicher ".
+		"Speicher_Solltemperatur:slider,40,1,65 ".
+		"Kuehlung_Solltemperatur:slider,5,1,20 ".
 		"Error:reset ".
 		"Quiet:ein,aus ".
 		"Sync ".
@@ -83,12 +84,21 @@ sub Aquarea_Set($$@)
 			$hash->{w_write}=1;
 			return (undef,1);
     }
-    elsif($cmd eq "Speicher")
+    elsif($cmd eq "Speicher_Solltemperatur")
     {
 
  			Log3 $name, 3, "Aquarea: Set Speicher $value $name";
 			$hash->{w_value}=$value;
 			$hash->{w_register}=137;
+			$hash->{w_write}=1;
+			return (undef,1);
+    }
+    elsif($cmd eq "Kuehlung_Solltemperatur")
+    {
+
+ 			Log3 $name, 3, "Aquarea: Set Speicher $value $name";
+			$hash->{w_value}=$value;
+			$hash->{w_register}=136;
 			$hash->{w_write}=1;
 			return (undef,1);
     }
@@ -364,41 +374,41 @@ Aquarea_Read($)
 				if ($dec[6] & 64)
 				{
 					$ergebnis="1";
-					Aq_readingsSingleUpdate($hash,"abtauen aktiv",$ergebnis, 1);
+					Aq_readingsSingleUpdate($hash,"abtauen_aktiv",$ergebnis, 1);
 				}
 				else
 				{
 					$ergebnis="0";
-					Aq_readingsSingleUpdate($hash,"abtauen aktiv",$ergebnis, 1);
+					Aq_readingsSingleUpdate($hash,"abtauen_aktiv",$ergebnis, 1);
 				}
     	}
 			if ($dec[1]==18)	# Aussentemperatur
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
 	$temp_a=$ergebnis;
-      	Aq_readingsSingleUpdate($hash,"Temperatur aussen",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Temperatur_aussen",$ergebnis, 1);
     	}
 			if ($dec[1]==19)	# Vorlauftemperatur
 			{
 	$temp_v=$ergebnis;
-      	Aq_readingsSingleUpdate($hash,"Temperatur Vorlauf",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Temperatur_Vorlauf",$ergebnis, 1);
     	}
 			if ($dec[1]==20)	# aktueller Fehler, geht wieder auf 0 wenn fehler behoben dez 38=Fehler H72(Speichertemperaturf�hler)
 			{
 				if ($dec[6] == 0) {$aktueller_fehler="";}
 				if ($dec[6] == 38) {$aktueller_fehler="H72(Speichertemperaturf�hler)";}
 				if ($dec[6] == 156) {$aktueller_fehler="H76(Kommunikationsfehler der Fernbedienung)";}
-      	Aq_readingsSingleUpdate($hash,"aktueller Fehler",$aktueller_fehler, 1);
+      	Aq_readingsSingleUpdate($hash,"aktueller_fehler",$aktueller_fehler, 1);
     	}
 			if ($dec[1]==21)	# R�cklauftemperatur
 			{
 	$temp_r=$ergebnis;
-      	Aq_readingsSingleUpdate($hash,"Temperatur Ruecklauf",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Temperatur_Ruecklauf",$ergebnis, 1);
     	}
 			if ($dec[1]==22)	# Speichertemperatur
 			{
 	$temp_s=$ergebnis;
-      	Aq_readingsSingleUpdate($hash,"Temperatur Speicher",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Temperatur_Speicher",$ergebnis, 1);
     	}
 			if ($dec[1]==23)	# Kompressorfrequenz
 			{
@@ -408,7 +418,7 @@ Aquarea_Read($)
 			{
 				if ($dec[6] == 38) {$ergebnis="H72(Speichertemperaturf�hler)";}
 				if ($dec[6] == 156) {$ergebnis="H76(Kommunikationsfehler der Fernbedienung)";}
-      	Aq_readingsSingleUpdate($hash,"letzter Fehler",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"letzter_Fehler",$ergebnis, 1);
     	}
 			if ($dec[1]==25)	# ???
 			{
@@ -423,18 +433,18 @@ Aquarea_Read($)
 	$modus=$ergebnis;
       	Aq_readingsSingleUpdate($hash,"Modus",$ergebnis, 1);
 				if ($dec[6] & 1) {$modus_text="ein |";
-					if ($dec[6] & 2) {$modus_text=$modus_text." heizen";Aq_readingsSingleUpdate($hash,"Modus heizen aktiv","1", 1);}
-					else {Aq_readingsSingleUpdate($hash,"Modus heizen aktiv","0", 1);}
-					if ($dec[6] & 4) {$modus_text=$modus_text." kuehlen";Aq_readingsSingleUpdate($hash,"Modus kuehlen aktiv","1", 1);}
-					else {Aq_readingsSingleUpdate($hash,"Modus kuehlen aktiv","0", 1);}
-					if ($dec[6] & 16) {$modus_text=$modus_text." Speicher";Aq_readingsSingleUpdate($hash,"Modus Speicher aktiv","1", 1);}
-					else {Aq_readingsSingleUpdate($hash,"Modus Speicher aktiv","0", 1);}
+					if ($dec[6] & 2) {$modus_text=$modus_text." heizen";Aq_readingsSingleUpdate($hash,"Modus_heizen aktiv","1", 1);}
+					else {Aq_readingsSingleUpdate($hash,"Modus_heizen_aktiv","0", 1);}
+					if ($dec[6] & 4) {$modus_text=$modus_text." kuehlen";Aq_readingsSingleUpdate($hash,"Modus_kuehlen aktiv","1", 1);}
+					else {Aq_readingsSingleUpdate($hash,"Modus_kuehlen_aktiv","0", 1);}
+					if ($dec[6] & 16) {$modus_text=$modus_text." Speicher";Aq_readingsSingleUpdate($hash,"Modus_Speicher aktiv","1", 1);}
+					else {Aq_readingsSingleUpdate($hash,"Modus_Speicher_aktiv","0", 1);}
 					if ($dec[6] & 32) {$modus_text=$modus_text." Auto";}
 					if ($dec[6] & 64) {$modus_text=$modus_text." Quiet";}
 				}
-				else {$modus_text="aus";Aq_readingsSingleUpdate($hash,"Modus Speicher aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus heizen aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus kuehlen aktiv","0", 1);}
-				if ($dec[6] == 1) {$modus_text="stby";Aq_readingsSingleUpdate($hash,"Modus Speicher aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus heizen aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus kuehlen aktiv","0", 1);}
-      	Aq_readingsSingleUpdate($hash,"Modus Klartext",$modus_text, 1);
+				else {$modus_text="aus";Aq_readingsSingleUpdate($hash,"Modus_Speicher_aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus_heizen_aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus_kuehlen_aktiv","0", 1);}
+				if ($dec[6] == 1) {$modus_text="stby";Aq_readingsSingleUpdate($hash,"Modus_Speicher_aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus_heizen_aktiv","0", 1);Aq_readingsSingleUpdate($hash,"Modus_kuehlen_aktiv","0", 1);}
+      	Aq_readingsSingleUpdate($hash,"Modus_Klartext",$modus_text, 1);
 				if ($dec[6] & 1) {$ergebnis="ein";}
 				else {$ergebnis="aus";}
       	Aq_readingsSingleUpdate($hash,"Betriebszustand",$ergebnis, 1);
@@ -451,7 +461,7 @@ Aquarea_Read($)
 			if ($dec[1]==30)	# highByte Energie heizen
 			{
       	# readingsSingleUpdate($hash,"30",$dec[6], 1);
-      	Aq_readingsSingleUpdate($hash,"Energie heizen in W",(($dec[6]*256)+$hash->{helper}{29}), 1);
+      	Aq_readingsSingleUpdate($hash,"Energie_heizen_in_W",(($dec[6]*256)+$hash->{helper}{29}), 1);
 			if ((($dec[6]*256)+$hash->{helper}{29}) > 0)
 			{
 			Aq_readingsSingleUpdate($hash,"Ventilstellung","heizen", 1);
@@ -465,7 +475,7 @@ Aquarea_Read($)
 			if ($dec[1]==32)	# ??? highByte Energie k�hlen ???
 			{
       	# Aq_readingsSingleUpdate($hash,"32",$ergebnis, 1);
-      	Aq_readingsSingleUpdate($hash,"Energie kuehlen in W",(($dec[6]*256)+$hash->{helper}{31}), 1);
+      	Aq_readingsSingleUpdate($hash,"Energie_kuehlen_in_W",(($dec[6]*256)+$hash->{helper}{31}), 1);
 			if ((($dec[6]*256)+$hash->{helper}{31}) > 0)
 			{
 			Aq_readingsSingleUpdate($hash,"Ventilstellung","kuehlen", 1);
@@ -478,7 +488,7 @@ Aquarea_Read($)
     	}
 			if ($dec[1]==34)	# highByte Puffer heizen
 			{
-      	Aq_readingsSingleUpdate($hash,"Energie Speicher in W",(($dec[6]*256)+$hash->{helper}{33}), 1);
+      	Aq_readingsSingleUpdate($hash,"Energie_Speicher_in_W",(($dec[6]*256)+$hash->{helper}{33}), 1);
 			if ((($dec[6]*256)+$hash->{helper}{33}) > 0)
 			{
 			Aq_readingsSingleUpdate($hash,"Ventilstellung","Speicher", 1);
@@ -535,12 +545,12 @@ Aquarea_Read($)
 			if ($dec[1]==136)	# ???  Cool Set ???
 			{
   			# Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
-				Aq_readingsSingleUpdate($hash,"Kuehlung Solltemperatur",$ergebnis, 1);
+				Aq_readingsSingleUpdate($hash,"Kuehlung_Solltemperatur",$ergebnis, 1);
     	}
 			if ($dec[1]==137)	# Hei�wasserspeichertemperatur  40 bis 75
 			{
 				if ($dec[6] & 128) {$ergebnis=$ergebnis-256;}
-      	Aq_readingsSingleUpdate($hash,"Speicher Solltemperatur",$ergebnis, 1);
+      	Aq_readingsSingleUpdate($hash,"Speicher_Solltemperatur",$ergebnis, 1);
     	}
 			if ($dec[1]==138)	# Sollwertverschiebung -5 bis +5
 			{
@@ -581,17 +591,17 @@ Aquarea_Read($)
 
 			if ($dec[1]==177)	#
 			{
-      	Aq_readingsSingleUpdate($hash,"Kuehlen aktiviert",$ergebnis, 1);
+      			if ($ergebnis & 2) {Aq_readingsSingleUpdate($hash,"Kuehlfunktion_aktiviert","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Kuehlfunktion_aktiviert","nein", 1);}
     	}
 
 
 			if ($dec[1]==192)	#
 			{
 
-				if ($dec[6] & 1) {Aq_readingsSingleUpdate($hash,"externes Raumthermostat","ja", 1);} else {Aq_readingsSingleUpdate($hash,"externes Raumthermostat","nein", 1);}
-				if ($dec[6] & 2) {Aq_readingsSingleUpdate($hash,"Speicher vorhanden","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Speicher vorhanden","nein", 1);}
-				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"Solar Vorrang","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Solar Vorrang","nein", 1);}
-				if ($dec[6] & 16) {Aq_readingsSingleUpdate($hash,"Entkeimung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Entkeimung","nein", 1);}
+				if ($dec[6] & 1) {Aq_readingsSingleUpdate($hash,"externes_Raumthermostat","ja", 1);} else {Aq_readingsSingleUpdate($hash,"externes_Raumthermostat","nein", 1);}
+				if ($dec[6] & 2) {Aq_readingsSingleUpdate($hash,"Speicher_vorhanden","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Speicher_vorhanden","nein", 1);}
+				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"Solar_Vorrang","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Solar_Vorrang","nein", 1);}
+				if ($dec[6] & 16) {Aq_readingsSingleUpdate($hash,"Entkeimung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Entkeimungsfunktion_aktiviert","nein", 1);}
 				if ($dec[6] & 32) {Aq_readingsSingleUpdate($hash,"Zusatzheizung","B", 1);} else {Aq_readingsSingleUpdate($hash,"Zusatzheizung","A", 1);}
 				# if ($dec[6] & 64) {$ergebnis=$ergebnis." Quiet";}
 				if ($dec[6] & 128) {Aq_readingsSingleUpdate($hash,"Wasserschutzfunktion","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Wasserschutzfunktion","nein", 1);}
@@ -600,12 +610,12 @@ Aquarea_Read($)
 			if ($dec[1]==193)	# Aufheizdauer Cool/Heat $dec[6] ist die Zeit in 30 min Schritten  2=60min, 1=30 min, 20=10h
 			{
 				$ergebnis=$ergebnis*30;
-      	Aq_readingsSingleUpdate($hash,"Aufheizdauer kuehlen+heizen",$ergebnis." min", 1);
+      	Aq_readingsSingleUpdate($hash,"Aufheizdauer_kuehlen+heizen",$ergebnis." min", 1);
     	}
 			if ($dec[1]==194)	# 194-Aufheizdauer_WW_Speicher_int 5=5min, 30=30min, 95=95min
 			{
 				$ergebnis=$ergebnis;
-      	Aq_readingsSingleUpdate($hash,"Aufheizdauer Speicher int",$ergebnis." min", 1);
+      	Aq_readingsSingleUpdate($hash,"Aufheizdauer_Speicher",$ergebnis." min", 1);
     	}
 			if ($dec[1]==195)	# Sollwertverschiebung -5 bis +5
 			{
@@ -623,7 +633,7 @@ Aquarea_Read($)
     	}
 			if ($dec[1]==198)	# Sollwertverschiebung -5 bis +5
 			{
-				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"Booster Funktion","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Booster Funktion","nein", 1);}
+				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"Booster_Funktion_aktiviert","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Booster_Funktion_aktiviert","nein", 1);}
 				if ($dec[6] & 8) {Aq_readingsSingleUpdate($hash,"Zusatzgehaeuseheizung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Zusatzgehaeuseheizung","nein", 1);}
 
        #	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);

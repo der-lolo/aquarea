@@ -45,10 +45,11 @@ sub Aquarea_Set($$@)
 {
     my ($hash, $name, $cmd,$value) = @_;
 
-    my $usage =	"Sollwertverschiebung:slider,-5,1,5 ".
+    my $usage =	"Sollwertverschiebung ".
 		"Modus:heizen,kuehlen,Speicher,Stby,Auto,heizenUNDSpeicher,kuehlenUNDSpeicher,aus ".
 		"Speicher:slider,40,1,65 ".
 		"Error:reset ".
+		"Quiet:ein,aus ".
 		"Sync ".
 		"ein ".
 		"aus ";
@@ -56,15 +57,15 @@ sub Aquarea_Set($$@)
     if($cmd eq "Sollwertverschiebung")
     {
 
- 			Log3 $name, 3, "Aquarea: Set Sollwertverschiebung $value";
-      if ($value<0)
-			{
-				$value=256+$value;
-			}
-			$hash->{w_value}=$value;
-			$hash->{w_register}=138;
-			$hash->{w_write}=1;
-			return (undef,1);
+ 	Log3 $name, 3, "Aquarea: Set Sollwertverschiebung $value";
+    	if ($value<0)
+	{
+		$value=256+$value;
+	}
+	$hash->{w_value}=$value;
+	$hash->{w_register}=138;
+	$hash->{w_write}=1;
+	return (undef,1);
     }
     elsif($cmd eq "Modus")
     {
@@ -120,6 +121,28 @@ sub Aquarea_Set($$@)
 			} else {
 			# ist breits auf aus
 			}
+    }
+    elsif($cmd eq "Quiet")
+    {
+			if ($value eq "ein") {
+				if ($modus < 64) {
+					$value=$modus+64;
+				} else {
+				# Quiet ist bereits auf ein.
+				}
+			}
+			if ($value eq "aus") {
+				if ($modus > 64) {
+					$value=$modus-64;
+				} else {
+				# Quiet ist bereits auf aus.
+				}
+			}
+			Log3 $name, 3, "Aquarea: Set Modus $value";
+			$hash->{w_value}=$value;
+			$hash->{w_register}=144;
+			$hash->{w_write}=1;
+			return (undef,1);
     }
     elsif($cmd eq "Error")
     {
@@ -269,9 +292,12 @@ Aquarea_Read($)
 			$hash->{w_sync}=0;
 	 }
 
+	 #Log3 $name, 3, "Aquarea: Debug: array[1]:".(ord($array[1]))." w_write:".$hash->{w_write}." w_value:".$hash->{w_value};
 
 	 if ((ord($array[1]))==17 && $hash->{w_write}==1) # 18 wird ausgeblendet und stattdessen der Befehl gesendet
 	 {
+			#Log3 $name, 3, "Aquarea: Debug: w_value:".$hash->{w_value}." w_register:".$hash->{w_register};
+
 			my $data;
 			my $data_0=170;
 			my $data_1=$hash->{w_register};
@@ -309,11 +335,14 @@ Aquarea_Read($)
 #####################################################################################
 			if ($hash->{w_write}==1)	# etwas in WP geschrieben
 			{
-				if ($ergebnis==$hash->{w_value})	# ist der geschriebene Wert=Quittung von WP
+				if ((ord($array[1]))==$hash->{w_register})     # pr�fe ob aktuelles register auch das w_register ist
 				{
- 					$hash->{w_write}=0;
- 					$hash->{w_time}=FmtDateTime(time);
-					Log3 $name, 3, "Aquarea: geschrieben Adresse:".$dec[0]." Register:".$dec[1]." Value:".$dec[2]." CRC:".$dec[3];
+					if ($ergebnis==$hash->{w_value})	# ist der geschriebene Wert=Quittung von WP
+					{
+ 						$hash->{w_write}=0;
+ 						$hash->{w_time}=FmtDateTime(time);
+						Log3 $name, 3, "Aquarea: geschrieben Adresse:".$dec[0]." Register:".$dec[1]." Value:".$dec[2]." CRC:".$dec[3];
+					}
 				}
 
 			}
@@ -595,7 +624,7 @@ Aquarea_Read($)
 			if ($dec[1]==198)	# Sollwertverschiebung -5 bis +5
 			{
 				if ($dec[6] & 4) {Aq_readingsSingleUpdate($hash,"Booster Funktion","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Booster Funktion","nein", 1);}
-				if ($dec[6] & 8) {Aq_readingsSingleUpdate($hash,"Zusatzgehaeseheizung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Zusatzgehaeseheizung","nein", 1);}
+				if ($dec[6] & 8) {Aq_readingsSingleUpdate($hash,"Zusatzgehaeuseheizung","ja", 1);} else {Aq_readingsSingleUpdate($hash,"Zusatzgehaeuseheizung","nein", 1);}
 
        #	Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
     	}

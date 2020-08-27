@@ -15,15 +15,15 @@ use Time::HiRes qw(gettimeofday);
 sub Aquarea_Read($);
 sub Aquarea_Ready($);
 
-my $state;
-my $aktueller_fehler;
-my $modus_text;
-my $modus;
-my $temp_r;
-my $temp_v;
-my $temp_a;
-my $temp_s;
-my $state_temp;
+my $state = '';
+my $aktueller_fehler = '';
+my $modus_text = '';
+my $modus = '';
+my $temp_r = '';
+my $temp_v = '';
+my $temp_a = '';
+my $temp_s = '';
+my $state_temp = '';
 
 sub
 Aquarea_Initialize($)
@@ -38,6 +38,10 @@ Aquarea_Initialize($)
   $hash->{SetFn}   = "Aquarea_Set";
   $hash->{UndefFn} = "Aquarea_Undef";
   $hash->{AttrList}= $readingFnAttributes;
+  $hash->{w_write}=0;
+  $hash->{w_sync}=0;
+  $hash->{w_value}=0;
+  $hash->{w_register}=0;
 }
 
 #####################################
@@ -294,7 +298,7 @@ Aquarea_Read($)
 	$msg=substr($Aquareadata,0,8,'');
 	my @array = split("", $msg);
 
-	 if ((ord($array[1]))==27 && $hash->{w_sync}==1)
+	 if (defined $hash->{w_sync} && (ord($array[1]))==27 && $hash->{w_sync}==1)
 	 {
 	    my $setrts = $hash->{USBDev}->rts_active(0); # rts fur auf high
 			select(undef, undef, undef, 1.950);	#
@@ -304,7 +308,7 @@ Aquarea_Read($)
 
 	 #Log3 $name, 3, "Aquarea: Debug: array[1]:".(ord($array[1]))." w_write:".$hash->{w_write}." w_value:".$hash->{w_value};
 
-	 if ((ord($array[1]))==17 && $hash->{w_write}==1) # 18 wird ausgeblendet und stattdessen der Befehl gesendet
+	 if (defined $hash->{w_write} && (ord($array[1]))==17 && $hash->{w_write}==1) # 18 wird ausgeblendet und stattdessen der Befehl gesendet
 	 {
 			#Log3 $name, 3, "Aquarea: Debug: w_value:".$hash->{w_value}." w_register:".$hash->{w_register};
 
@@ -343,7 +347,7 @@ Aquarea_Read($)
 		{
 			$ergebnis=$dec[6];
 #####################################################################################
-			if ($hash->{w_write}==1)	# etwas in WP geschrieben
+			if (defined $hash->{w_write} && $hash->{w_write}==1)	# etwas in WP geschrieben
 			{
 				if ((ord($array[1]))==$hash->{w_register})     # pr�fe ob aktuelles register auch das w_register ist
 				{
@@ -359,14 +363,14 @@ Aquarea_Read($)
 #####################################################################################
 
 
-			if (($dec[1] => 0) && ($dec[1] < 16))
-			{
+#			if (($dec[1] => 0) && ($dec[1] < 16))
+#			{
 #  			Aq_readingsSingleUpdate($hash, $dec[1],$dec[0]." ".$dec[1]." ".$dec[2]." ".$dec[3]." ".$dec[4]." ".$dec[5]." ".$dec[6]." ".$dec[7], 1);
-			}
+#			}
 
 			if ($dec[1]==16)	# ???
 			{
-#				Aq_readingsSingleUpdate($hash,"16",$ergebnis, 1);
+#			Aq_readingsSingleUpdate($hash,"16",$ergebnis, 1);
     	}
 			if ($dec[1]==17)	# beim abtauen=64
 			{
@@ -610,7 +614,7 @@ Aquarea_Read($)
 			if ($dec[1]==193)	# Aufheizdauer Cool/Heat $dec[6] ist die Zeit in 30 min Schritten  2=60min, 1=30 min, 20=10h
 			{
 				$ergebnis=$ergebnis*30;
-      	Aq_readingsSingleUpdate($hash,"Aufheizdauer_kuehlen+heizen",$ergebnis." min", 1);
+      	Aq_readingsSingleUpdate($hash,"Aufheizdauer_kuehlenUNDheizen",$ergebnis." min", 1);
     	}
 			if ($dec[1]==194)	# 194-Aufheizdauer_WW_Speicher_int 5=5min, 30=30min, 95=95min
 			{
@@ -667,7 +671,7 @@ Aquarea_Read($)
 
 		}
 
-	if ($aktueller_fehler=="") {
+	if ($aktueller_fehler eq "") {
 		$state = $modus_text." | V:".$temp_v." | R:".$temp_r." | S:".$temp_s." | A:".$temp_a;
 	} else {
 		$state = $aktueller_fehler;

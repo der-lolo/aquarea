@@ -399,9 +399,11 @@ Aquarea_Read($)
     	}
 			if ($dec[1]==20)	# aktueller Fehler, geht wieder auf 0 wenn fehler behoben dez 38=Fehler H72(Speichertemperaturf�hler)
 			{
+				$aktueller_fehler=$ergebnis;
 				if ($dec[6] == 0) {$aktueller_fehler="";}
-				if ($dec[6] == 38) {$aktueller_fehler="H72(Speichertemperaturf�hler)";}
+				if ($dec[6] == 38) {$aktueller_fehler="H72(Speichertemperaturfuehler)";}
 				if ($dec[6] == 156) {$aktueller_fehler="H76(Kommunikationsfehler der Fernbedienung)";}
+				if ($dec[6] == 236) {$aktueller_fehler="H70(Rücklauftemperatur <18°C)";}
       	Aq_readingsSingleUpdate($hash,"aktueller_fehler",$aktueller_fehler, 1);
     	}
 			if ($dec[1]==21)	# R�cklauftemperatur
@@ -422,6 +424,7 @@ Aquarea_Read($)
 			{
 				if ($dec[6] == 38) {$ergebnis="H72(Speichertemperaturf�hler)";}
 				if ($dec[6] == 156) {$ergebnis="H76(Kommunikationsfehler der Fernbedienung)";}
+				if ($dec[6] == 236) {$ergebnis="H70(Rücklauftemperatur <18°C)";}
       	Aq_readingsSingleUpdate($hash,"letzter_Fehler",$ergebnis, 1);
     	}
 			if ($dec[1]==25)	# ???

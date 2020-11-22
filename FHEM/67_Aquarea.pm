@@ -4,7 +4,7 @@
 # Vorraussetzung: Baudrate eines ELV RS232-USB Wandlers UM2102 �ndern auf 960 Baud, um den Datenbus einer
 # Panasonic W�rmepumpe WH-MDC05F3E5 (Geisha) zu belauschen.
 # initialisiert wird die Schnittstelle dann mit /dev/ttyUSBx@1200,8,E,1 wobei die angegebenen 1200 Baud
-# in Wirklichkeit 960 Baud sind
+# in Wirklichkeit 960 Baud sind#
 
 package main;
 
